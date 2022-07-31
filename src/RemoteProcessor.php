@@ -23,14 +23,18 @@ abstract class RemoteProcessor
      * @param  \Laravel\Envoy\Task  $task
      * @return array
      */
-    protected function getProcess($host, Task $task)
+    protected function getProcess($options, Task $task)
     {
+        [$host, $projectRoot] = explode('x___x', $options);
+        
+        $script = str_replace("<project_root>", $projectRoot, $task->script);
+        
         $target = $this->getConfiguredServer($host) ?: $host;
 
         $env = $this->getEnvironment($host);
 
         if (in_array($target, ['local', 'localhost', '127.0.0.1'])) {
-            $process = Process::fromShellCommandline($task->script, null, $env);
+            $process = Process::fromShellCommandline($script, null, $env);
         }
 
         // Here we'll run the SSH task on the server inline. We do not need to write the
@@ -51,14 +55,14 @@ abstract class RemoteProcessor
                 $process->setInput(
                     implode(PHP_EOL, $env)
                     .'set -e '.PHP_EOL
-                    .str_replace("\r", '', $task->script)
+                    .str_replace("\r", '', $script)
                 );
             } else {
                 $process = Process::fromShellCommandline(
                     "ssh $target 'bash -se' << \\$delimiter".PHP_EOL
                     .implode(PHP_EOL, $env).PHP_EOL
                     .'set -e'.PHP_EOL
-                    .$task->script.PHP_EOL
+                    .$script.PHP_EOL
                     .$delimiter
                 );
             }
